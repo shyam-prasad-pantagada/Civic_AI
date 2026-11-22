@@ -3,8 +3,8 @@
 Implements legal question retrieval and explanation with mandatory citations
 (SPEC.md Section 3.3).
 Retrieves relevant sections from central Acts (India Code) and state regulations.
-The AI model synthesizes plain language answers ONLY from retrieved passages.
-If confidence is below threshold, returns no-source fallback and legal aid routes (NALSA/SLSA).
+If no statutory match is found in RAG, delegates to dynamic_rights_llm for
+up-to-date non-statutory guidance.
 All methods accept a `lang` parameter.
 """
 
@@ -13,7 +13,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 from app.models.schemas import Citation, RightsResponse
-from app.services.llm import llm_service
+from app.services.dynamic_rights_llm import generate_dynamic_rights_guidance
 
 logger = logging.getLogger("Civic_AI.RightsRAG")
 
@@ -306,18 +306,17 @@ class RightsRAGService:
         state: Optional[str] = None,
         lang: str = "en",
     ) -> RightsResponse:
-        """Answer citizen rights inquiry strictly with citations to indexed legal sources."""
+        """Answer citizen rights inquiry via statutory RAG, falling back to dynamic LLM guidance."""
         clean_q = question.strip().lower()
         if not clean_q:
             raise ValueError("Query question cannot be empty.")
 
-        # Search statutory knowledgebase
+        # 1. Search statutory knowledgebase first
         best_match = None
         max_score = 0
 
         for entry in STATUTORY_KNOWLEDGEBASE:
             score = 0
-            # Check state match
             if state and entry["jurisdiction"] != "Central":
                 if entry["jurisdiction"].upper() == state.upper():
                     score += 2
@@ -332,12 +331,20 @@ class RightsRAGService:
                 max_score = score
                 best_match = entry
 
-        # If no relevant statutory source found, return official no-source fallback
+        # 2. If not matched in statutory RAG, call dynamic_rights_llm
         if not best_match or max_score == 0:
+            dynamic_response = await generate_dynamic_rights_guidance(
+                question=question,
+                state=state,
+                lang=lang,
+            )
+            if dynamic_response is not None:
+                return dynamic_response
+
             return RightsResponse(
                 question=question,
                 your_rights=[
-                    "I could not locate an authoritative statutory Act or official legal circular specifically covering this inquiry in the indexed civic repository."
+                    "Not Directly Under Statutory Law: I could not locate a standalone statutory Act specifically covering this inquiry in the indexed civic repository, and live AI guidance is currently unavailable."
                 ],
                 what_you_can_do=[
                     "Consult your local State Legal Services Authority (SLSA) or District Legal Services Authority (DLSA) for free verified advice.",
@@ -353,7 +360,7 @@ class RightsRAGService:
                 lang=lang,
             )
 
-        # Match found! Synthesize answer using AI model if available, or return verified statutory packet
+        # 3. Statutory match found
         citation = Citation(
             act_name=best_match["act_name"],
             section=best_match["section"],
