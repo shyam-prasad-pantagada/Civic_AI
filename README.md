@@ -202,8 +202,8 @@ pytest backend/tests -v
 | Variable | Description | Default | Required |
 |---|---|---|---|
 | `LLM_API_KEY` | API Key for the AI model (summarization, vision OCR, rights retrieval) | None | No (Local offline fallbacks used if unset) |
-| `LLM_MODEL` | AI model name | `gemini-2.5-flash` | No |
-| `TAVILY_API_KEY` | Search API Key for real-time live portal lookups | None | No (Offline catalog used if unset) |
+| `LLM_MODEL` | AI model name | None | No |
+| `TAVILY_API_KEY` | Search API Key for real-time live portal lookups | Not Specific | No (Offline catalog used if unset) |
 | `VITE_API_URL` | Base URL of the backend API for the frontend client | `http://localhost:8000` | No |
 
 ---
