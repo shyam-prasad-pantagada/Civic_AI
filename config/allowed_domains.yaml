@@ -1,0 +1,27 @@
+# Domains Civic_AI is permitted to fetch from
+# All scrapers and search must restrict to these domains
+allowed_patterns:
+  - "*.gov.in"
+  - "*.nic.in"
+  - "indiacode.nic.in"
+  - "egazette.gov.in"
+  - "pib.gov.in"
+  - "myscheme.gov.in"
+  - "data.gov.in"
+  - "apisetu.gov.in"
+  - "india.gov.in"
+  - "legislative.gov.in"
+  - "nalsa.gov.in"
+  - "pmkisan.gov.in"
+  - "pmjay.gov.in"
+  - "labour.gov.in"
+  - "nrega.nic.in"
+  - "scholarships.gov.in"
+  - "sci.gov.in"
+  - "ecourts.gov.in"
+  - "bhashini.gov.in"
+
+rate_limit:
+  requests_per_second: 2
+  burst: 5
+  respect_robots_txt: true
