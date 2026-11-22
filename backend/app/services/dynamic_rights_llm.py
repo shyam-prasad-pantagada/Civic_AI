@@ -9,6 +9,7 @@ explicitly discloses that no standalone statutory Act file exists for the query.
 from datetime import datetime, timezone
 import json
 import logging
+import os
 import re
 from typing import Optional
 
@@ -21,14 +22,33 @@ from app.models.schemas import RightsResponse
 logger = logging.getLogger("Civic_AI.DynamicRightsLLM")
 
 
+def _resolve_api_key() -> Optional[str]:
+    """Resolve Gemini API key across common settings and environment variable names."""
+    for candidate in (
+        getattr(settings, "LLM_API_KEY", None),
+        getattr(settings, "GEMINI_API_KEY", None),
+        getattr(settings, "GOOGLE_API_KEY", None),
+        os.getenv("LLM_API_KEY"),
+        os.getenv("GEMINI_API_KEY"),
+        os.getenv("GOOGLE_API_KEY"),
+    ):
+        if candidate and str(candidate).strip():
+            return str(candidate).strip()
+    return None
+
+
 async def generate_dynamic_rights_guidance(
     question: str,
     state: Optional[str] = None,
     lang: str = "en",
 ) -> Optional[RightsResponse]:
     """Generate up-to-date non-statutory guidance via Gemini when RAG has no match."""
-    if not settings.LLM_API_KEY:
-        logger.warning("LLM_API_KEY is not set; skipping dynamic rights LLM fallback.")
+    api_key = _resolve_api_key()
+    if not api_key:
+        logger.warning(
+            "No Gemini API key configured (checked LLM_API_KEY, GEMINI_API_KEY, GOOGLE_API_KEY); "
+            "skipping dynamic rights LLM fallback."
+        )
         return None
 
     current_date = datetime.now(timezone.utc).strftime("%B %d, %Y")
@@ -64,49 +84,63 @@ Return ONLY valid JSON with this exact structure:
   ]
 }}"""
 
-    try:
-        client = genai.Client(api_key=settings.LLM_API_KEY)
-        response = await client.aio.models.generate_content(
-            model=settings.LLM_MODEL or "gemini-2.5-flash",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.2,
-                response_mime_type="application/json",
-            ),
-        )
+    configured_model = (getattr(settings, "LLM_MODEL", None) or os.getenv("LLM_MODEL") or "").strip()
+    candidate_models = []
+    for m in (configured_model, "gemini-3.6-flash", "gemini-3.8-flash", "gemini-2.5-flash"):
+        if m and m not in candidate_models:
+            candidate_models.append(m)
 
-        raw_text = (response.text or "").strip()
-        raw_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.IGNORECASE).strip()
-        data = json.loads(raw_text)
+    client = genai.Client(api_key=api_key)
+    last_error = None
 
-        rights_items = data.get("your_rights") or []
-        if not rights_items:
-            return None
+    for model_name in candidate_models:
+        try:
+            response = await client.aio.models.generate_content(
+                model=model_name,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    temperature=0.2,
+                    response_mime_type="application/json",
+                ),
+            )
 
-        non_statutory_notice = (
-            f"Not Directly Under Statutory Law (Dynamic AI Guidance • Updated {current_date}): "
-            "No standalone statutory Act in the India Code repository directly governs this exact scenario; "
-            "the points below reflect current Indian regulatory guidelines, institutional rules, and constitutional principles."
-        )
-        rights_items.insert(0, non_statutory_notice)
+            raw_text = (response.text or "").strip()
+            raw_text = re.sub(r"^```(?:json)?\s*|\s*```$", "", raw_text, flags=re.IGNORECASE).strip()
+            data = json.loads(raw_text)
 
-        return RightsResponse(
-            question=question,
-            your_rights=rights_items,
-            what_you_can_do=data.get("what_you_can_do")
-            or [
-                "Request a copy of the written institutional rule, circular, or policy governing the issue.",
-                "Consult your local District Legal Services Authority (DLSA) or NALSA (15100) for free legal advice.",
-            ],
-            where_to_complain_or_get_free_help=data.get("where_to_complain_or_get_free_help")
-            or [
-                "Relevant Institutional Grievance Redressal Cell / Ombudsperson",
-                "National Legal Services Authority (NALSA) Toll-Free Legal Aid Helpline: 15100",
-            ],
-            citations=[],
-            has_official_source=False,
-            lang=lang,
-        )
-    except Exception as exc:
-        logger.error("DynamicRightsLLM error for query '%s': %s", question, exc)
-        return None
+            rights_items = data.get("your_rights") or []
+            if not rights_items:
+                logger.warning("DynamicRightsLLM returned empty your_rights from model '%s'.", model_name)
+                return None
+
+            non_statutory_notice = (
+                f"Not Directly Under Statutory Law (Dynamic AI Guidance • Updated {current_date}): "
+                "No standalone statutory Act in the India Code repository directly governs this exact scenario; "
+                "the points below reflect current Indian regulatory guidelines, institutional rules, and constitutional principles."
+            )
+            rights_items.insert(0, non_statutory_notice)
+
+            return RightsResponse(
+                question=question,
+                your_rights=rights_items,
+                what_you_can_do=data.get("what_you_can_do")
+                or [
+                    "Request a copy of the written institutional rule, circular, or policy governing the issue.",
+                    "Consult your local District Legal Services Authority (DLSA) or NALSA (15100) for free legal advice.",
+                ],
+                where_to_complain_or_get_free_help=data.get("where_to_complain_or_get_free_help")
+                or [
+                    "Relevant Institutional Grievance Redressal Cell / Ombudsperson",
+                    "National Legal Services Authority (NALSA) Toll-Free Legal Aid Helpline: 15100",
+                ],
+                citations=[],
+                has_official_source=False,
+                lang=lang,
+            )
+        except Exception as exc:
+            last_error = exc
+            logger.warning("DynamicRightsLLM attempt with model '%s' failed: %s", model_name, exc)
+            continue
+
+    logger.error("DynamicRightsLLM exhausted all models for query '%s': %s", question, last_error)
+    return None
