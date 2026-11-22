@@ -7,10 +7,13 @@ voice synthesis/transcription, live verification, and state coverage.
 
 from contextlib import asynccontextmanager
 import logging
+from pathlib import Path
 from typing import Any, AsyncGenerator, Dict
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.eligibility import router as eligibility_router
 from app.api.explain import router as explain_router
@@ -82,6 +85,21 @@ app.include_router(rights_router, prefix="/api")
 app.include_router(stats_router, prefix="/api")
 app.include_router(verify_router, prefix="/api")
 app.include_router(states_router, prefix="/api")
+
+# Serve built Vite frontend from frontend/dist
+FRONTEND_DIST = Path(__file__).resolve().parents[2] / "frontend" / "dist"
+
+if FRONTEND_DIST.exists():
+    assets_dir = FRONTEND_DIST / "assets"
+    if assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
+    @app.get("/{full_path:path}", include_in_schema=False)
+    async def serve_frontend(full_path: str) -> FileResponse:
+        file_path = FRONTEND_DIST / full_path
+        if full_path and file_path.is_file():
+            return FileResponse(file_path)
+        return FileResponse(FRONTEND_DIST / "index.html")
 
 
 if __name__ == "__main__":
