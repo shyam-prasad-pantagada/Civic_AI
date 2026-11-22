@@ -4,7 +4,7 @@ import CitationChip from '../components/CitationChip'
 import { renderClickableContent } from '../utils/linkify'
 import { useLanguage } from '../i18n'
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? '' : 'http://localhost:8000')
 
 export default function RightsPage() {
   const { lang, t, currentLanguage } = useLanguage()
@@ -62,13 +62,13 @@ export default function RightsPage() {
       <div className="page-header">
         <span className="badge badge-pill page-badge">
           <span>⚖️</span>
-          <span>India Code Legal Intelligence • {currentLanguage?.native || lang.toUpperCase()}</span>
+          <span>Rights &amp; Legal Intelligence • {currentLanguage?.native || lang.toUpperCase()}</span>
         </span>
         <h1 className="page-title">
-          {t('rightsTitle', 'Statutory Citizen Rights & Legal Remedies')}
+          {t('rightsTitle', 'Citizen Rights & Legal Remedies')}
         </h1>
         <p className="page-subtitle">
-          {t('rightsSub', 'Instant, legally grounded guidance on citizen rights under Indian law with exact statutory section citations.')}
+          {t('rightsSub', 'Instant guidance on citizen rights under Indian law, regulatory rules, and official citations.')}
         </p>
       </div>
 
@@ -117,7 +117,7 @@ export default function RightsPage() {
               onClick={() => handleSearch()}
               disabled={loading || !query.trim()}
             >
-              <span>{loading ? 'Searching Acts...' : t('askAiRightsBtn', 'Search Statutory Rights')}</span>
+              <span>{loading ? 'Searching Rights...' : t('askAiRightsBtn', 'Search Rights')}</span>
               <span>→</span>
             </button>
           </div>
@@ -125,7 +125,7 @@ export default function RightsPage() {
           {/* Quick Questions Pills */}
           <div>
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-              {t('frequentlyAskedQueries', 'Frequently Asked Legal Queries (click to test):')}
+              {t('frequentlyAskedQueries', 'Frequently Asked Rights Queries (click to test):')}
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
               {quickQuestions.map((q, idx) => (
@@ -157,7 +157,7 @@ export default function RightsPage() {
           <div style={{ textAlign: 'center', margin: '2.5rem 0' }}>
             <div className="loading-spinner"></div>
             <div style={{ marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.92rem' }}>
-              {t('searchingStatutoryDb', 'Searching India Code statutory database and evaluating rights...')}
+              {t('searchingRightsDb', 'Checking rights repository and evaluating guidance...')}
             </div>
           </div>
         )}
@@ -169,7 +169,7 @@ export default function RightsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-subtle)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <div>
                 <span className={`badge ${result.has_official_source ? 'badge-verified' : 'badge-warning'}`} style={{ marginRight: '0.5rem' }}>
-                  {result.has_official_source ? t('statutoryProtectionFound', '✓ Statutory Protection Found') : t('noOfficialSourceFound', '⚠️ No Official Source Found')}
+                  {result.has_official_source ? t('rightsProtectionFound', '✓ Official Rights Source Found') : t('dynamicRightsGuidance', '✦ Dynamic AI Rights Guidance')}
                 </span>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   {t('questionLabel', 'Question')}: "{result.question}"
@@ -181,7 +181,7 @@ export default function RightsPage() {
             {result.citations && result.citations.length > 0 ? (
               <div style={{ padding: '1.1rem', background: 'var(--bg-surface)', border: '1px solid var(--border-card)', borderRadius: 'var(--radius-md)' }}>
                 <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.06em', color: 'var(--accent-info)', fontWeight: 700, marginBottom: '0.65rem' }}>
-                  {t('mandatoryCitations', 'Mandatory Legal Citations (India Code / Official Acts)')}
+                  {t('officialCitations', 'Official Rights Citations (India Code / Official Acts)')}
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.65rem' }}>
                   {result.citations.map((c, idx) => (
@@ -202,15 +202,15 @@ export default function RightsPage() {
               </div>
             ) : (
               <div style={{ padding: '1rem', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)', borderRadius: 'var(--radius-md)', fontSize: '0.88rem' }}>
-                <strong>{t('noStatutorySourceIdentified', 'No Official Statutory Source Identified: Civic AI requires verified India Code citations to certify rights. We found no governing statute matching this exact scenario.')}</strong>
+                <strong>{t('nonStatutoryRightsNotice', 'Not Directly Under Statutory Law: This topic is not governed by a standalone Act in our indexed rights repository; live AI rights & regulatory guidance is shown below.')}</strong>
               </div>
             )}
 
-            {/* Your Statutory Rights */}
+            {/* Your Rights */}
             {result.your_rights && result.your_rights.length > 0 && (
               <div>
                 <div style={{ fontSize: '0.8rem', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--accent-verified)', fontWeight: 700, marginBottom: '0.6rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span>🛡️</span> {t('yourProtectedRights', 'Your Protected Rights Under Law')}
+                  <span>🛡️</span> {t('yourProtectedRights', 'Your Rights & Guidance')}
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {result.your_rights.map((right, idx) => (
@@ -258,9 +258,9 @@ export default function RightsPage() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-subtle)', paddingTop: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
               <SourceBadge 
                 status={result.has_official_source ? 'verified' : 'could_not_verify'} 
-                sourceName="India Code Legislative Portal" 
+                sourceName="Rights & Official Sources" 
                 sourceUrl="https://www.indiacode.nic.in" 
-                lastVerified={t('sectionCitationsChecked', 'Section citations live-checked')} 
+                lastVerified={t('sectionCitationsChecked', 'Rights & citations checked')} 
               />
               <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
                 {t('stateContext', 'State Context')}: <strong>{result.state || 'Central'}</strong>
